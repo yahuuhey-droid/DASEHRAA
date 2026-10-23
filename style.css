@@ -50,12 +50,14 @@ body {
     background: #FFFFFF;
     border-radius: 50%;
     pointer-events: none;
+    will-change: opacity;
+    contain: strict;
     animation: starTwinkle var(--twinkle-dur, 3s) infinite ease-in-out var(--twinkle-del, 0s);
 }
 
 @keyframes starTwinkle {
-    0%, 100% { opacity: var(--star-min-op, 0.2); transform: scale(0.8); }
-    50% { opacity: 1; transform: scale(1.35); box-shadow: 0 0 8px #FFF, 0 0 16px rgba(255, 215, 0, 0.8); }
+    0%, 100% { opacity: var(--star-min-op, 0.2); }
+    50% { opacity: 0.95; }
 }
 
 .clouds-layer {
@@ -78,15 +80,16 @@ body {
     height: 90px;
     background: radial-gradient(circle, #FFFDF0 20%, #FFEAA7 60%, rgba(255, 234, 167, 0) 75%);
     border-radius: 50%;
-    box-shadow: 0 0 45px rgba(255, 234, 167, 0.8), 0 0 90px rgba(255, 159, 67, 0.4);
+    box-shadow: 0 0 35px rgba(255, 234, 167, 0.75), 0 0 70px rgba(255, 159, 67, 0.35);
     pointer-events: none;
     z-index: -1;
+    will-change: transform, opacity;
     animation: moonPulse 6s ease-in-out infinite alternate;
 }
 
 @keyframes moonPulse {
     0% { transform: scale(1); opacity: 0.9; }
-    100% { transform: scale(1.06); opacity: 1; filter: drop-shadow(0 0 20px #FF9F43); }
+    100% { transform: scale(1.05); opacity: 1; }
 }
 
 /* Canvas Overlay for Fire, Embers, Arrow Trajectory & Fireworks */
@@ -349,12 +352,13 @@ body {
     background: radial-gradient(circle, rgba(255, 223, 0, 0.22) 0%, rgba(255, 107, 26, 0.08) 60%, transparent 80%);
     pointer-events: none;
     z-index: -1;
+    will-change: transform, opacity;
     animation: divineGlowAura 4s infinite alternate;
 }
 
 @keyframes divineGlowAura {
     0% { transform: scale(0.95); opacity: 0.7; }
-    100% { transform: scale(1.1); opacity: 1; filter: blur(4px); }
+    100% { transform: scale(1.08); opacity: 0.95; }
 }
 
 .ravan-dark-aura {
@@ -377,12 +381,12 @@ body {
 
 /* Pulsing tip on Rama's Brahmastra */
 .pulsing-tip {
-    animation: tipFlicker 0.3s infinite alternate;
+    animation: tipFlicker 0.4s infinite alternate;
 }
 
 @keyframes tipFlicker {
-    0% { r: 8px; opacity: 0.8; }
-    100% { r: 12px; opacity: 1; filter: drop-shadow(0 0 8px #FFD700); }
+    0% { r: 9px; opacity: 0.8; }
+    100% { r: 12px; opacity: 1; }
 }
 
 /* Navel (Nabhi) Target Ring on Ravana */
@@ -492,12 +496,13 @@ body {
     letter-spacing: 1.5px;
     line-height: 1.2;
     margin-bottom: 8px;
-    animation: goldGleam 2.5s infinite alternate;
+    will-change: transform;
+    animation: goldGleam 2.5s infinite alternate ease-in-out;
 }
 
 @keyframes goldGleam {
-    0% { filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8)) drop-shadow(0 0 35px rgba(255, 71, 87, 0.5)); transform: scale(1); }
-    100% { filter: drop-shadow(0 0 35px rgba(255, 215, 0, 1)) drop-shadow(0 0 60px rgba(255, 107, 26, 0.8)); transform: scale(1.03); }
+    0% { transform: scale(1); }
+    100% { transform: scale(1.03); }
 }
 
 .sky-sub-slogan {
@@ -516,7 +521,7 @@ body {
 
 @keyframes diyaFlicker {
     0% { transform: scale(0.95); opacity: 0.85; }
-    100% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 12px #FFD700); }
+    100% { transform: scale(1.06); opacity: 1; }
 }
 
 .divine-sunburst {
@@ -581,7 +586,7 @@ body {
 
 @keyframes evilEyeFlicker {
     0% { opacity: 0.7; fill: #C0392B; }
-    100% { opacity: 1; fill: #FF0000; filter: drop-shadow(0 0 4px #FF0000); }
+    100% { opacity: 1; fill: #FF0000; }
 }
 
 /* ===================================================
@@ -921,12 +926,13 @@ body {
 }
 
 .blessing-glow {
+    will-change: transform, opacity;
     animation: blessingPulse 2.2s infinite alternate ease-in-out;
 }
 
 @keyframes blessingPulse {
     0% { transform: scale(0.85); opacity: 0.5; }
-    100% { transform: scale(1.2); opacity: 0.95; filter: drop-shadow(0 0 12px #FFD700); }
+    100% { transform: scale(1.15); opacity: 0.95; }
 }
 
 /* Ravan Shaking & Dying */

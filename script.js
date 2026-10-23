@@ -61,24 +61,27 @@
     let currentSenderName = "आप";
 
     // ----------------------------------------------------
-    // Twinkling Night Sky Stars Generator (Batched DOM Fragment)
+    // Twinkling Night Sky Stars Generator (Adaptive & Hardware Accelerated)
     // ----------------------------------------------------
     function generateNightSkyStars() {
         const starsLayer = document.querySelector('.stars-layer');
         if (!starsLayer) return;
         starsLayer.innerHTML = '';
         const fragment = document.createDocumentFragment();
-        const starCount = 140;
+        
+        // Adaptive star count for buttery-smooth mobile 60 FPS
+        const isMobile = window.innerWidth < 768;
+        const starCount = isMobile ? 45 : 80;
 
         for (let i = 0; i < starCount; i++) {
             const star = document.createElement('div');
             star.className = 'css-star';
-            const size = Math.random() < 0.75 ? (Math.random() * 2 + 1) : (Math.random() * 2.5 + 2.5);
+            const size = Math.random() < 0.75 ? (Math.random() * 2 + 1) : 3;
             const posX = Math.random() * 100;
             const posY = Math.random() * 85; // Upper 85% of sky
-            const dur = (Math.random() * 2.5 + 1.5).toFixed(2);
-            const del = (Math.random() * 4).toFixed(2);
-            const minOp = (Math.random() * 0.25 + 0.1).toFixed(2);
+            const dur = (Math.random() * 2.5 + 2).toFixed(2);
+            const del = (Math.random() * 3).toFixed(2);
+            const minOp = (Math.random() * 0.25 + 0.15).toFixed(2);
 
             star.style.width = `${size}px`;
             star.style.height = `${size}px`;
@@ -88,12 +91,8 @@
             star.style.setProperty('--twinkle-del', `${del}s`);
             star.style.setProperty('--star-min-op', minOp);
 
-            const colors = ['#FFFFFF', '#FFFFFF', '#FFFDF0', '#FFEAA7', '#DFF9FB'];
+            const colors = ['#FFFFFF', '#FFFFFF', '#FFFDF0', '#FFEAA7'];
             star.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-
-            if (size > 3.2) {
-                star.style.boxShadow = '0 0 6px #FFF, 0 0 14px rgba(255, 215, 0, 0.85)';
-            }
 
             fragment.appendChild(star);
         }
@@ -286,10 +285,10 @@
             this.exploded = true;
             window.soundEngine.playFirecrackerPop();
 
-            const count = 65;
+            const count = window.innerWidth < 768 ? 26 : 48;
             for (let i = 0; i < count; i++) {
                 const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.3;
-                const speed = 2 + Math.random() * 6;
+                const speed = 2 + Math.random() * 5.5;
                 const color = this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)];
                 particles.push(
                     new Particle(
@@ -298,9 +297,9 @@
                         color,
                         Math.cos(angle) * speed,
                         Math.sin(angle) * speed,
-                        Math.random() * 3 + 1.5,
+                        Math.random() * 2.5 + 1.2,
                         1,
-                        0.015 + Math.random() * 0.01,
+                        0.018 + Math.random() * 0.01,
                         'firework'
                     )
                 );
@@ -310,20 +309,20 @@
         draw(ctx) {
             ctx.save();
             ctx.fillStyle = '#FFEAA7';
-            ctx.shadowBlur = 10;
+            ctx.shadowBlur = 8;
             ctx.shadowColor = '#FF9F43';
             ctx.beginPath();
-            ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, 2.5, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
     }
 
     // ----------------------------------------------------
-    // Flying Arrow (Brahmastra)
+    // Flying Arrow (Brahmastra) - High Precision Time-Synced Flight
     // ----------------------------------------------------
     class BrahmastraArrow {
-        constructor(startX, startY, targetX, targetY) {
+        constructor(startX, startY, targetX, targetY, duration = 850) {
             this.x = startX;
             this.y = startY;
             this.startX = startX;
@@ -333,13 +332,16 @@
             this.prevX = startX - 5;
             this.prevY = startY;
 
+            this.startTime = performance.now();
+            this.duration = duration; // Millisecond exact duration for zero audio desync
             this.progress = 0;
-            this.speed = 0.018; // Speed across the screen (~1.2 seconds)
             this.completed = false;
         }
 
-        update() {
-            this.progress += this.speed;
+        update(now) {
+            const currentTime = now || performance.now();
+            const elapsed = currentTime - this.startTime;
+            this.progress = Math.min(1, elapsed / this.duration);
 
             if (this.progress >= 1) {
                 this.progress = 1;
@@ -348,7 +350,7 @@
 
             // Curved trajectory (gentle arch)
             const currentX = this.startX + (this.targetX - this.startX) * this.progress;
-            const arch = Math.sin(this.progress * Math.PI) * -60;
+            const arch = Math.sin(this.progress * Math.PI) * -50;
             const currentY = this.startY + (this.targetY - this.startY) * this.progress + arch;
 
             this.prevX = this.x;
@@ -356,15 +358,17 @@
             this.x = currentX;
             this.y = currentY;
 
-            // Emit fiery trail particles behind the arrow
-            for (let i = 0; i < 4; i++) {
-                const colors = ['#FFF275', '#FFA502', '#FF4757', '#FF6B1A', '#FFFFFF'];
-                const color = colors[Math.floor(Math.random() * colors.length)];
-                const vx = (Math.random() - 0.5) * 1.5 - 2;
-                const vy = (Math.random() - 0.5) * 1.5;
-                particles.push(
-                    new Particle(this.x, this.y, color, vx, vy, Math.random() * 4 + 2, 1, 0.04, 'fire')
-                );
+            // Emit fiery trail particles behind the arrow (lightweight & crisp)
+            if (!this.completed) {
+                for (let i = 0; i < 2; i++) {
+                    const colors = ['#FFF275', '#FFA502', '#FF4757', '#FFFFFF'];
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    const vx = (Math.random() - 0.5) * 1.5 - 2;
+                    const vy = (Math.random() - 0.5) * 1.5;
+                    particles.push(
+                        new Particle(this.x, this.y, color, vx, vy, Math.random() * 3 + 1.5, 1, 0.05, 'fire')
+                    );
+                }
             }
         }
 
@@ -376,10 +380,10 @@
             ctx.rotate(angle);
 
             // Arrow Length & Shaft
-            const length = 75;
+            const length = 68;
             ctx.strokeStyle = '#FFEAA7';
-            ctx.lineWidth = 4;
-            ctx.shadowBlur = 20;
+            ctx.lineWidth = 3.5;
+            ctx.shadowBlur = 14;
             ctx.shadowColor = '#FFD700';
 
             ctx.beginPath();
@@ -389,32 +393,32 @@
 
             // Inner golden glow
             ctx.strokeStyle = '#FFA502';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.moveTo(-length, 0);
             ctx.lineTo(0, 0);
             ctx.stroke();
 
-            // Arrow Head (Divine Trident / Flaming Crescent Spear)
+            // Arrow Head (Divine Trident Crescent Spear)
             ctx.fillStyle = '#FFF275';
             ctx.beginPath();
-            ctx.moveTo(18, 0);
-            ctx.lineTo(-10, -10);
-            ctx.lineTo(-4, 0);
-            ctx.lineTo(-10, 10);
+            ctx.moveTo(16, 0);
+            ctx.lineTo(-8, -9);
+            ctx.lineTo(-3, 0);
+            ctx.lineTo(-8, 9);
             ctx.closePath();
             ctx.fill();
 
             // Glowing halo around arrow tip
-            const tipGlow = ctx.createRadialGradient(8, 0, 0, 8, 0, 24);
+            const tipGlow = ctx.createRadialGradient(6, 0, 0, 6, 0, 20);
             tipGlow.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-            tipGlow.addColorStop(0.3, 'rgba(255, 215, 0, 0.7)');
-            tipGlow.addColorStop(0.7, 'rgba(255, 71, 87, 0.4)');
+            tipGlow.addColorStop(0.35, 'rgba(255, 215, 0, 0.7)');
+            tipGlow.addColorStop(0.75, 'rgba(255, 71, 87, 0.35)');
             tipGlow.addColorStop(1, 'rgba(255, 71, 87, 0)');
 
             ctx.fillStyle = tipGlow;
             ctx.beginPath();
-            ctx.arc(8, 0, 24, 0, Math.PI * 2);
+            ctx.arc(6, 0, 20, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.restore();
@@ -422,14 +426,20 @@
     }
 
     // ----------------------------------------------------
-    // Main Animation Loop (60 FPS)
+    // Main Animation Loop (High Performance 60 FPS)
     // ----------------------------------------------------
-    function animate() {
+    function animate(now) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Update & Render active arrow
+        // Cap active particles to prevent mobile frame drops
+        const maxParticles = window.innerWidth < 768 ? 60 : 120;
+        if (particles.length > maxParticles) {
+            particles.splice(0, particles.length - maxParticles);
+        }
+
+        // Update & Render active arrow (time-synchronized)
         if (activeArrow && !activeArrow.completed) {
-            activeArrow.update();
+            activeArrow.update(now);
             activeArrow.draw(ctx);
 
             if (activeArrow.completed) {
@@ -472,7 +482,7 @@
         }
 
         // Ambient Torches embers rising continuously
-        if (Math.random() < 0.25) {
+        if (Math.random() < 0.2) {
             spawnTorchEmbers();
         }
 
@@ -574,8 +584,7 @@
         shootBtn.style.opacity = '0.6';
         battleStatus.innerHTML = '<i class="fa-solid fa-crosshairs"></i> प्रभु श्री राम ने ब्रह्मास्त्र का संधान किया...';
 
-        // Play Bow Twang and Shankhnaad
-        window.soundEngine.playBowTwang();
+        // Shankhnaad resonates as Shri Ram draws the bowstring
         window.soundEngine.playShankhNaad();
 
         ramaBox.classList.add('rama-drawing');
@@ -586,14 +595,15 @@
 
         ravanSpeechText.textContent = "नहीं! यह कौन सा अस्त्र है?!";
 
-        // After pulling string, release arrow
+        // After pulling string back (700ms), bow snaps forward and arrow releases
         setTimeout(() => {
             // Bow string snaps forward
             bowString.setAttribute('d', 'M220 30 L235 168 L225 325');
             loadedArrow.style.display = 'none'; // Hide SVG arrow, spawn flying canvas arrow
 
+            // Release sound: Crisp twang + synchronous arrow flight whoosh
             window.soundEngine.playBowTwang();
-            window.soundEngine.playArrowFlight();
+            window.soundEngine.playArrowFlight(0.85);
 
             battleStatus.innerHTML = '<i class="fa-solid fa-bolt"></i> दिव्य ब्रह्मास्त्र रावण की ओर बढ़ रहा है...';
 
@@ -607,19 +617,20 @@
             const targetX = navelRect.left + navelRect.width / 2;
             const targetY = navelRect.top + navelRect.height / 2;
 
-            activeArrow = new BrahmastraArrow(startX, startY, targetX, targetY);
+            // Arrow flies for exactly 850ms, perfectly synchronized to audio flight sound
+            activeArrow = new BrahmastraArrow(startX, startY, targetX, targetY, 850);
 
         }, 700);
     }
 
     // ----------------------------------------------------
-    // Arrow Impact on Ravan
+    // Arrow Impact on Ravan (Visual + Audio Millisecond Sync)
     // ----------------------------------------------------
     function onArrowImpact() {
         hasRavanDied = true;
         battleStatus.innerHTML = '<i class="fa-solid fa-fire"></i> रावण की नाभि में बाण लगा! रावण दहन प्रारंभ!';
 
-        // Sound: Giant blast & defeat moan
+        // Sound: Instant blast impact & defeat moan
         window.soundEngine.playExplosion();
         setTimeout(() => window.soundEngine.playRavanDefeat(), 400);
 
@@ -628,14 +639,15 @@
         const hitX = navelRect.left + navelRect.width / 2;
         const hitY = navelRect.top + navelRect.height / 2;
 
-        // Big explosion burst particles
-        for (let i = 0; i < 90; i++) {
+        // Optimized explosion burst particles
+        const burstCount = window.innerWidth < 768 ? 45 : 75;
+        for (let i = 0; i < burstCount; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = 2 + Math.random() * 9;
+            const speed = 2 + Math.random() * 8;
             const colors = ['#FFF275', '#FFA502', '#FF4757', '#FFFFFF', '#C0392B'];
             const color = colors[Math.floor(Math.random() * colors.length)];
             particles.push(
-                new Particle(hitX, hitY, color, Math.cos(angle) * speed, Math.sin(angle) * speed, Math.random() * 5 + 2, 1, 0.02, 'fire')
+                new Particle(hitX, hitY, color, Math.cos(angle) * speed, Math.sin(angle) * speed, Math.random() * 4 + 2, 1, 0.025, 'fire')
             );
         }
 
@@ -658,10 +670,11 @@
     // ----------------------------------------------------
     function destroyRavanHeadsSequentially(originX, originY) {
         const headsArray = Array.from(ravanHeads);
+        // Cache SVG bounding box once to prevent 60fps layout thrashing
+        const rRect = ravanSvg.getBoundingClientRect();
 
-        // Continuous effigy fire & crackers
+        // Continuous effigy fire (lightweight 120ms interval, no forced layout reflows)
         const fireInterval = setInterval(() => {
-            const rRect = ravanSvg.getBoundingClientRect();
             const randX = rRect.left + Math.random() * rRect.width;
             const randY = rRect.top + Math.random() * rRect.height;
 
@@ -669,28 +682,26 @@
             const c = fireColors[Math.floor(Math.random() * fireColors.length)];
 
             particles.push(
-                new Particle(randX, randY, c, (Math.random() - 0.5) * 4, -Math.random() * 5 - 2, Math.random() * 5 + 3, 1, 0.02, 'fire')
+                new Particle(randX, randY, c, (Math.random() - 0.5) * 3, -Math.random() * 4 - 2, Math.random() * 4 + 2, 1, 0.025, 'fire')
             );
+        }, 120);
 
-            // Frequent firecracker pops
-            if (Math.random() < 0.4) {
-                window.soundEngine.playFirecrackerPop();
-            }
-        }, 60);
-
-        // Explode heads one after another
+        // Explode heads one after another in rhythmic synchronization
         headsArray.forEach((head, index) => {
             setTimeout(() => {
-                const flyX = (index % 2 === 0 ? 1 : -1) * (50 + Math.random() * 80);
+                const flyX = (index % 2 === 0 ? 1 : -1) * (45 + Math.random() * 55);
                 head.style.setProperty('--fly-x', `${flyX}px`);
                 head.classList.add('head-explode');
+                
+                // 1 distinct, crisp firecracker sound per head explosion!
                 window.soundEngine.playFirecrackerPop();
 
                 // Small burst at head
                 const hRect = head.getBoundingClientRect();
-                for (let j = 0; j < 20; j++) {
+                const pCount = window.innerWidth < 768 ? 8 : 14;
+                for (let j = 0; j < pCount; j++) {
                     const angle = Math.random() * Math.PI * 2;
-                    const speed = 2 + Math.random() * 4;
+                    const speed = 1.5 + Math.random() * 3.5;
                     particles.push(
                         new Particle(
                             hRect.left + hRect.width / 2,
@@ -698,14 +709,14 @@
                             '#FFD700',
                             Math.cos(angle) * speed,
                             Math.sin(angle) * speed,
-                            3,
+                            2.5,
                             1,
-                            0.03,
+                            0.035,
                             'fire'
                         )
                     );
                 }
-            }, 600 + index * 260);
+            }, 550 + index * 240);
         });
 
         // After heads fall, effigy crumbles completely into ash
@@ -726,7 +737,7 @@
             // Grand Dussehra Celebration Fireworks & Victory Bells
             startGrandCelebration();
 
-        }, 600 + headsArray.length * 260 + 800);
+        }, 550 + headsArray.length * 240 + 750);
     }
 
     // ----------------------------------------------------
@@ -740,10 +751,10 @@
         setTimeout(() => window.soundEngine.playTempleBell(1046), 1100);
         setTimeout(() => window.soundEngine.playShankhNaad(), 1400);
 
-        // Continuous multi-colored fireworks show across screen
+        // Continuous multi-colored fireworks show across screen (balanced interval)
         const celebrationTimer = setInterval(() => {
             const startX = Math.random() * canvas.width;
-            const targetX = startX + (Math.random() - 0.5) * 200;
+            const targetX = startX + (Math.random() - 0.5) * 180;
             const targetY = 80 + Math.random() * (canvas.height * 0.45);
 
             const palettes = [
@@ -755,12 +766,12 @@
             const palette = palettes[Math.floor(Math.random() * palettes.length)];
 
             fireworks.push(new FireworkShell(startX, canvas.height, targetX, targetY, palette));
-        }, 400);
+        }, 650);
 
         // Falling golden petals / confetti
         const petalTimer = setInterval(() => {
             const colors = ['#FFD700', '#FF9F43', '#FF6B6B', '#F8EFBA', '#FFFFFF'];
-            for (let i = 0; i < 4; i++) {
+            for (let i = 0; i < 2; i++) {
                 particles.push(
                     new Particle(
                         Math.random() * canvas.width,
@@ -768,14 +779,14 @@
                         colors[Math.floor(Math.random() * colors.length)],
                         (Math.random() - 0.5) * 1.5,
                         1 + Math.random() * 2,
-                        Math.random() * 6 + 3,
+                        Math.random() * 5 + 3,
                         1,
                         0.003,
                         'petal'
                     )
                 );
             }
-        }, 150);
+        }, 250);
 
         // Show Victory Modal after 2.5 seconds
         setTimeout(() => {
@@ -928,6 +939,21 @@
             shootArrow();
         }
     });
+
+    // Mobile Audio Instant Unlocker (wakes AudioContext on very first screen touch)
+    const unlockAudio = () => {
+        if (window.soundEngine) {
+            window.soundEngine.init();
+        }
+        window.removeEventListener('touchstart', unlockAudio);
+        window.removeEventListener('touchend', unlockAudio);
+        window.removeEventListener('pointerdown', unlockAudio);
+        window.removeEventListener('click', unlockAudio);
+    };
+    window.addEventListener('touchstart', unlockAudio, { passive: true, once: true });
+    window.addEventListener('touchend', unlockAudio, { passive: true, once: true });
+    window.addEventListener('pointerdown', unlockAudio, { passive: true, once: true });
+    window.addEventListener('click', unlockAudio, { passive: true, once: true });
 
     // Initialize from URL query parameters
     parseUrlName();
