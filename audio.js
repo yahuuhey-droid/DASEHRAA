@@ -1,0 +1,362 @@
+/**
+ * Festive Dussehra Sound Engine (Web Audio API)
+ * Synthesizes Shankhnaad, Bow Twang, Flaming Arrow flight, Firecrackers,
+ * Explosions, Evil Laugh, and Festive Temple Bells.
+ * 100% self-contained, no external MP3/network dependencies!
+ */
+
+class DussehraAudioEngine {
+    constructor() {
+        this.ctx = null;
+        this.isMuted = false;
+        this.hasUserInteracted = false;
+        this.ambientOsc = null;
+        this.ambientGain = null;
+    }
+
+    // Initialize AudioContext upon first user gesture
+    init() {
+        if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioCtx();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+        this.hasUserInteracted = true;
+    }
+
+    setMuted(muted) {
+        this.isMuted = muted;
+        if (this.ctx && muted) {
+            this.ctx.suspend();
+        } else if (this.ctx && !muted) {
+            this.ctx.resume();
+        }
+    }
+
+    toggleMute() {
+        this.init();
+        this.setMuted(!this.isMuted);
+        return this.isMuted;
+    }
+
+    // 1. Shankh Naad (Divine Conch Shell Sound)
+    playShankhNaad() {
+        if (this.isMuted) return;
+        this.init();
+
+        const ctx = this.ctx;
+        const now = ctx.currentTime;
+        const duration = 3.6;
+
+        const masterGain = ctx.createGain();
+        masterGain.connect(ctx.destination);
+        masterGain.gain.setValueAtTime(0.001, now);
+        masterGain.gain.linearRampToValueAtTime(0.35, now + 0.8);
+        masterGain.gain.setValueAtTime(0.35, now + duration - 1.0);
+        masterGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+        // Conch fundamental & rich overtones (Natural harmonic series of a conch)
+        const fundamental = 220; // A3
+        const harmonics = [1, 2, 2.98, 4.02, 5.01];
+        const harmonicGains = [0.5, 0.4, 0.25, 0.15, 0.08];
+
+        harmonics.forEach((h, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.type = idx === 0 ? 'sine' : (idx === 1 ? 'triangle' : 'sawtooth');
+            
+            // Subtle vibrato/tremolo in human blowing of conch
+            const baseFreq = fundamental * h;
+            osc.frequency.setValueAtTime(baseFreq * 0.96, now);
+            osc.frequency.exponentialRampToValueAtTime(baseFreq, now + 0.4);
+            osc.frequency.setValueAtTime(baseFreq, now + duration - 0.5);
+            osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.94, now + duration);
+
+            gain.gain.value = harmonicGains[idx];
+            osc.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(now);
+            osc.stop(now + duration);
+        });
+
+        // Add conch breath turbulence with filtered noise
+        this.createNoiseBuffer((noiseBuffer) => {
+            const noise = ctx.createBufferSource();
+            noise.buffer = noiseBuffer;
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(800, now);
+            filter.Q.value = 3;
+
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.setValueAtTime(0.001, now);
+            noiseGain.gain.linearRampToValueAtTime(0.05, now + 0.5);
+            noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+            noise.connect(filter);
+            filter.connect(noiseGain);
+            noiseGain.connect(masterGain);
+
+            noise.start(now);
+            noise.stop(now + duration);
+        });
+    }
+
+    // 2. Bow String Twang (धनुष टंकार)
+    playBowTwang() {
+        if (this.isMuted) return;
+        this.init();
+
+        const ctx = this.ctx;
+        const now = ctx.currentTime;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+
+        // Deep resonant twang frequency drop
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.35);
+
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.4);
+    }
+
+    // 3. Arrow Flying Whoosh & Flame Sizzle (बाण की उड़ान)
+    playArrowFlight() {
+        if (this.isMuted) return;
+        this.init();
+
+        const ctx = this.ctx;
+        const now = ctx.currentTime;
+        const duration = 1.2;
+
+        this.createNoiseBuffer((noiseBuffer) => {
+            const noise = ctx.createBufferSource();
+            noise.buffer = noiseBuffer;
+
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'bandpass';
+            // Swoop in pitch as arrow speeds
+            filter.frequency.setValueAtTime(400, now);
+            filter.frequency.exponentialRampToValueAtTime(2600, now + duration);
+            filter.Q.value = 5;
+
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.linearRampToValueAtTime(0.4, now + duration * 0.8);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+
+            noise.start(now);
+            noise.stop(now + duration);
+        });
+
+        // Whistling divine tone
+        const whistle = ctx.createOscillator();
+        const whistleGain = ctx.createGain();
+        whistle.type = 'sine';
+        whistle.frequency.setValueAtTime(800, now);
+        whistle.frequency.exponentialRampToValueAtTime(1800, now + duration);
+
+        whistleGain.gain.setValueAtTime(0.01, now);
+        whistleGain.gain.linearRampToValueAtTime(0.15, now + duration * 0.8);
+        whistleGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+        whistle.connect(whistleGain);
+        whistleGain.connect(ctx.destination);
+
+        whistle.start(now);
+        whistle.stop(now + duration);
+    }
+
+    // 4. Massive Explosion when Arrow hits Ravan (रावण पर बाण प्रहार)
+    playExplosion() {
+        if (this.isMuted) return;
+        this.init();
+
+        const ctx = this.ctx;
+        const now = ctx.currentTime;
+
+        // Sub bass thump
+        const sub = ctx.createOscillator();
+        const subGain = ctx.createGain();
+        sub.type = 'sine';
+        sub.frequency.setValueAtTime(180, now);
+        sub.frequency.exponentialRampToValueAtTime(25, now + 0.6);
+
+        subGain.gain.setValueAtTime(0.8, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+        sub.connect(subGain);
+        subGain.connect(ctx.destination);
+        sub.start(now);
+        sub.stop(now + 0.7);
+
+        // Explosive noise burst
+        this.createNoiseBuffer((noiseBuffer) => {
+            const noise = ctx.createBufferSource();
+            noise.buffer = noiseBuffer;
+
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1200, now);
+            filter.frequency.exponentialRampToValueAtTime(80, now + 1.2);
+
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.7, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+
+            noise.start(now);
+            noise.stop(now + 1.2);
+        });
+    }
+
+    // 5. Firecracker Pop / Crackle (पटाखे का धमाका)
+    playFirecrackerPop() {
+        if (this.isMuted) return;
+        this.init();
+
+        const ctx = this.ctx;
+        const now = ctx.currentTime;
+
+        // Crisp crackle pop
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(300 + Math.random() * 500, now);
+        osc.frequency.exponentialRampToValueAtTime(60, now + 0.12);
+
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.15);
+    }
+
+    // 6. Ravana Evil Laugh / Grunt
+    playEvilLaugh() {
+        if (this.isMuted) return;
+        this.init();
+
+        const ctx = this.ctx;
+        const now = ctx.currentTime;
+        const laughPitches = [160, 150, 140, 130, 120];
+
+        laughPitches.forEach((pitch, i) => {
+            const t = now + i * 0.16;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(pitch, t);
+            osc.frequency.exponentialRampToValueAtTime(pitch * 0.8, t + 0.14);
+
+            gain.gain.setValueAtTime(0.2, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(t);
+            osc.stop(t + 0.16);
+        });
+    }
+
+    // 7. Ravana Defeat Gasp / Groan
+    playRavanDefeat() {
+        if (this.isMuted) return;
+        this.init();
+
+        const ctx = this.ctx;
+        const now = ctx.currentTime;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(45, now + 1.2);
+
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 600;
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 1.3);
+    }
+
+    // 8. Temple Bell Toll (विजय घंटानाद)
+    playTempleBell(freq = 520) {
+        if (this.isMuted) return;
+        this.init();
+
+        const ctx = this.ctx;
+        const now = ctx.currentTime;
+        const duration = 2.2;
+
+        const masterGain = ctx.createGain();
+        masterGain.connect(ctx.destination);
+        masterGain.gain.setValueAtTime(0.3, now);
+        masterGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+        // Inharmonic partials characteristic of brass/bronze bells
+        const partials = [1, 2.02, 3.01, 4.25, 5.43];
+        const amps = [0.6, 0.4, 0.25, 0.15, 0.08];
+
+        partials.forEach((p, idx) => {
+            const osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq * p, now);
+
+            g.gain.value = amps[idx];
+            osc.connect(g);
+            g.connect(masterGain);
+
+            osc.start(now);
+            osc.stop(now + duration);
+        });
+    }
+
+    // Helper: Generate a white noise buffer
+    createNoiseBuffer(callback) {
+        if (!this.ctx) return;
+        const bufferSize = this.ctx.sampleRate * 2;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            output[i] = Math.random() * 2 - 1;
+        }
+        callback(buffer);
+    }
+}
+
+// Global Audio Instance
+window.soundEngine = new DussehraAudioEngine();
+
