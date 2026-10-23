@@ -344,16 +344,18 @@ class DussehraAudioEngine {
         });
     }
 
-    // Helper: Generate a white noise buffer
+    // Helper: Generate or reuse cached white noise buffer (Zero-allocation)
     createNoiseBuffer(callback) {
         if (!this.ctx) return;
-        const bufferSize = this.ctx.sampleRate * 2;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const output = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            output[i] = Math.random() * 2 - 1;
+        if (!this.cachedNoiseBuffer || this.cachedNoiseBuffer.sampleRate !== this.ctx.sampleRate) {
+            const bufferSize = this.ctx.sampleRate * 2;
+            this.cachedNoiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const output = this.cachedNoiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
         }
-        callback(buffer);
+        callback(this.cachedNoiseBuffer);
     }
 }
 

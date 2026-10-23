@@ -61,13 +61,15 @@
     let currentSenderName = "आप";
 
     // ----------------------------------------------------
-    // Twinkling Night Sky Stars Generator
+    // Twinkling Night Sky Stars Generator (Batched DOM Fragment)
     // ----------------------------------------------------
     function generateNightSkyStars() {
         const starsLayer = document.querySelector('.stars-layer');
         if (!starsLayer) return;
         starsLayer.innerHTML = '';
+        const fragment = document.createDocumentFragment();
         const starCount = 140;
+
         for (let i = 0; i < starCount; i++) {
             const star = document.createElement('div');
             star.className = 'css-star';
@@ -93,8 +95,9 @@
                 star.style.boxShadow = '0 0 6px #FFF, 0 0 14px rgba(255, 215, 0, 0.85)';
             }
 
-            starsLayer.appendChild(star);
+            fragment.appendChild(star);
         }
+        starsLayer.appendChild(fragment);
     }
 
     // ----------------------------------------------------
@@ -137,13 +140,23 @@
     }
 
     // ----------------------------------------------------
-    // Resize Canvas
+    // Resize Canvas & Cached Layout Metrics (Prevents Layout Thrashing)
     // ----------------------------------------------------
+    let cachedArenaRect = null;
+    function updateCachedLayout() {
+        const arena = document.getElementById('battleArena');
+        if (arena) {
+            cachedArenaRect = arena.getBoundingClientRect();
+        }
+    }
+
     function resizeCanvas() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+        updateCachedLayout();
     }
     window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('scroll', updateCachedLayout, { passive: true });
     resizeCanvas();
 
     // ----------------------------------------------------
@@ -230,8 +243,10 @@
                 ctx.fill();
             } else {
                 ctx.fillStyle = this.color;
-                ctx.shadowBlur = this.type === 'fire' ? 12 : 6;
-                ctx.shadowColor = this.color;
+                // High-performance additive glowing without CPU blur bottlenecks
+                if (this.type === 'fire') {
+                    ctx.globalCompositeOperation = 'lighter';
+                }
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, Math.max(0.5, this.size), 0, Math.PI * 2);
                 ctx.fill();
@@ -466,8 +481,9 @@
     requestAnimationFrame(animate);
 
     function spawnTorchEmbers() {
-        const arenaRect = document.getElementById('battleArena').getBoundingClientRect();
-        if (arenaRect.bottom < 0 || arenaRect.top > window.innerHeight) return;
+        if (!cachedArenaRect) updateCachedLayout();
+        const arenaRect = cachedArenaRect;
+        if (!arenaRect || arenaRect.bottom < 0 || arenaRect.top > window.innerHeight) return;
 
         // Left torch
         particles.push(
